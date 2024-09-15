@@ -162,6 +162,24 @@ func DistanceBetweenPoints(latitude1, longitude1, latitude2, longitude2 float64,
 
 // LoadDataset reads and loads the dataset into a map interface
 func LoadDataset(datasetPath string) (Zipcodes, error) {
+	return loadDataset(datasetPath, "")
+}
+
+// LoadDatasetByCountry reads and loads the dataset into a map interface filtered by ISO Country Code
+func LoadDatasetByCountry(datasetPath, country string) (Zipcodes, error) {
+	return loadDataset(datasetPath, country)
+}
+
+func loadDataset(datasetPath, country string) (Zipcodes, error) {
+	wantCountry := country != ""
+	inCountry := false
+
+	if wantCountry && len(country) != 2 {
+		return Zipcodes{}, fmt.Errorf("country must be a 2 character ISO Country Code")
+	}
+
+	country = strings.ToUpper(country)
+
 	file, err := os.Open(datasetPath)
 	if err != nil {
 		log.Fatal(err)
@@ -176,22 +194,29 @@ func LoadDataset(datasetPath string) (Zipcodes, error) {
 		if len(splittedLine) != 12 {
 			return Zipcodes{}, fmt.Errorf("zipcodes: file line does not have 12 fields")
 		}
-		lat, errLat := strconv.ParseFloat(splittedLine[9], 64)
-		if errLat != nil {
-			return Zipcodes{}, fmt.Errorf("zipcodes: error while converting %s to Latitude", splittedLine[9])
-		}
-		lon, errLon := strconv.ParseFloat(splittedLine[10], 64)
-		if errLon != nil {
-			return Zipcodes{}, fmt.Errorf("zipcodes: error while converting %s to Longitude", splittedLine[10])
-		}
 
-		zipcodeMap.DatasetList[splittedLine[1]] = ZipCodeLocation{
-			ZipCode:   splittedLine[1],
-			PlaceName: splittedLine[2],
-			AdminName: splittedLine[3],
-			Lat:       lat,
-			Lon:       lon,
-			StateCode: splittedLine[4],
+		if !wantCountry || splittedLine[0] == country {
+			inCountry = true
+
+			lat, errLat := strconv.ParseFloat(splittedLine[9], 64)
+			if errLat != nil {
+				return Zipcodes{}, fmt.Errorf("zipcodes: error while converting %s to Latitude", splittedLine[9])
+			}
+			lon, errLon := strconv.ParseFloat(splittedLine[10], 64)
+			if errLon != nil {
+				return Zipcodes{}, fmt.Errorf("zipcodes: error while converting %s to Longitude", splittedLine[10])
+			}
+
+			zipcodeMap.DatasetList[splittedLine[1]] = ZipCodeLocation{
+				ZipCode:   splittedLine[1],
+				PlaceName: splittedLine[2],
+				AdminName: splittedLine[3],
+				Lat:       lat,
+				Lon:       lon,
+				StateCode: splittedLine[4],
+			}
+		} else if inCountry && splittedLine[0] != country {
+			break
 		}
 	}
 
