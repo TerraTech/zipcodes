@@ -4,6 +4,7 @@ package zipcodes
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -17,6 +18,11 @@ const (
 	earthRadiusMi = 3958
 )
 
+var (
+	ErrMultipleLatLon  = errors.New("zipcode has multiple lat/lon coordinates")
+	ErrZipcodeNotFound = errors.New("zipcode not found")
+)
+
 // ZipCodeLocation struct represents each line of the dataset
 type ZipCodeLocation struct {
 	ZipCode   string
@@ -27,106 +33,82 @@ type ZipCodeLocation struct {
 	StateCode string
 }
 
-// Zipcodes contains the whole list of structs representing
-// the zipcode dataset
+// ZipCodeLocations slice represents a zipcode with multiple lat/lon coordinates
+type ZipCodeLocations []ZipCodeLocation
+
+// Zipcodes contains the whole list of structs representing the zipcode dataset
 type Zipcodes struct {
-	DatasetList map[string]ZipCodeLocation
+	DatasetList map[string]ZipCodeLocations
 }
 
-// New loads the dataset that this packages uses and
+// New loads the dataset and returns a struct that contains the dataset as a map interface
+func New(datasetPath string) (Zipcodes, error) {
+	return LoadDataset(datasetPath)
+}
+
+// NewByCountry loads the dataset, filtered by country, and
 // returns a struct that contains the dataset as a map interface
-func New(datasetPath string) (*Zipcodes, error) {
-	zipcodes, err := LoadDataset(datasetPath)
-	if err != nil {
-		return nil, err
-	}
-	return &zipcodes, nil
+func NewByCountry(datasetPath, country string) (Zipcodes, error) {
+	return LoadDatasetByCountry(datasetPath, country)
 }
 
 // Lookup looks for a zipcode inside the map interface
-func (zc *Zipcodes) Lookup(zipCode string) (*ZipCodeLocation, error) {
-	foundedZipcode := zc.DatasetList[zipCode]
-	if (foundedZipcode == ZipCodeLocation{}) {
-		return &ZipCodeLocation{}, fmt.Errorf("zipcodes: zipcode %s not found !", zipCode)
+func (zc Zipcodes) Lookup(zipCode string) (ZipCodeLocations, error) {
+	zipcodes, exists := zc.DatasetList[zipCode]
+	if !exists {
+		return nil, ErrZipcodeNotFound
+	} else if len(zipcodes) > 1 {
+		return zipcodes, ErrMultipleLatLon
+	} else {
+		return zipcodes, nil
 	}
-	return &foundedZipcode, nil
 }
 
-// DistanceInKm returns the line of sight distance between two zipcodes in Kilometers
-func (zc *Zipcodes) DistanceInKm(zipCodeA string, zipCodeB string) (float64, error) {
-	return zc.CalculateDistance(zipCodeA, zipCodeB, earthRadiusKm)
+// DistanceInKm returns the line of sight distance between two zipcode locations in Kilometers
+func (zc Zipcodes) DistanceInKm(zipcodeLocationA ZipCodeLocation, zipcodeLocationB ZipCodeLocation) float64 {
+	return zc.CalculateDistance(zipcodeLocationA, zipcodeLocationB, earthRadiusKm)
 }
 
-// DistanceInMiles returns the line of sight distance between two zipcodes in Miles
-func (zc *Zipcodes) DistanceInMiles(zipCodeA string, zipCodeB string) (float64, error) {
-	return zc.CalculateDistance(zipCodeA, zipCodeB, earthRadiusMi)
+// DistanceInMiles returns the line of sight distance between two zipcode locations in Miles
+func (zc Zipcodes) DistanceInMiles(zipcodeLocationA, zipcodeLocationB ZipCodeLocation) float64 {
+	return zc.CalculateDistance(zipcodeLocationA, zipcodeLocationB, earthRadiusMi)
 }
 
-// CalculateDistance returns the line of sight distance between two zipcodes in Kilometers
-func (zc *Zipcodes) CalculateDistance(zipCodeA string, zipCodeB string, radius float64) (float64, error) {
-	locationA, errLocA := zc.Lookup(zipCodeA)
-	if errLocA != nil {
-		return 0, errLocA
-	}
-
-	locationB, errLocB := zc.Lookup(zipCodeB)
-	if errLocB != nil {
-		return 0, errLocB
-	}
-
-	return DistanceBetweenPoints(locationA.Lat, locationA.Lon, locationB.Lat, locationB.Lon, radius), nil
+// CalculateDistance returns the line of sight distance between two zipcode locations in Kilometers
+func (zc Zipcodes) CalculateDistance(zipcodeLocationA, zipcodeLocationB ZipCodeLocation, radius float64) float64 {
+	return DistanceBetweenPoints(zipcodeLocationA.Lat, zipcodeLocationA.Lon, zipcodeLocationB.Lat, zipcodeLocationB.Lon, radius)
 }
 
 // DistanceInKmToZipcode calculates the distance between a zipcode and a give lat/lon in Kilometers
-func (zc *Zipcodes) DistanceInKmToZipCode(zipCode string, latitude, longitude float64) (float64, error) {
-	location, errLoc := zc.Lookup(zipCode)
-	if errLoc != nil {
-		return 0, errLoc
-	}
-
-	return DistanceBetweenPoints(location.Lat, location.Lon, latitude, longitude, earthRadiusKm), nil
+func (zc Zipcodes) DistanceInKmToZipCode(zipcodeLocation ZipCodeLocation, latitude, longitude float64) float64 {
+	return DistanceBetweenPoints(zipcodeLocation.Lat, zipcodeLocation.Lon, latitude, longitude, earthRadiusKm)
 }
 
 // DistanceInMilToZipcode calculates the distance between a zipcode and a give lat/lon in Miles
-func (zc *Zipcodes) DistanceInMilToZipCode(zipCode string, latitude, longitude float64) (float64, error) {
-	location, errLoc := zc.Lookup(zipCode)
-	if errLoc != nil {
-		return 0, errLoc
-	}
-
-	return DistanceBetweenPoints(location.Lat, location.Lon, latitude, longitude, earthRadiusMi), nil
+func (zc Zipcodes) DistanceInMilToZipCode(zipcodeLocation ZipCodeLocation, latitude, longitude float64) float64 {
+	return DistanceBetweenPoints(zipcodeLocation.Lat, zipcodeLocation.Lon, latitude, longitude, earthRadiusMi)
 }
 
 // GetZipcodesWithinKmRadius get all zipcodes within the radius of this zipcode
-func (zc *Zipcodes) GetZipcodesWithinKmRadius(zipCode string, radius float64) ([]string, error) {
-	zipcodeList := []string{}
-	location, errLoc := zc.Lookup(zipCode)
-	if errLoc != nil {
-		return zipcodeList, errLoc
-	}
-
-	return zc.FindZipcodesWithinRadius(location, radius, earthRadiusKm), nil
+func (zc Zipcodes) GetZipcodesWithinKmRadius(zipcodeLocation ZipCodeLocation, radius float64) []string {
+	return zc.FindZipcodesWithinRadius(zipcodeLocation, radius, earthRadiusKm)
 }
 
 // GetZipcodesWithinMlRadius get all zipcodes within the radius of this zipcode
-func (zc *Zipcodes) GetZipcodesWithinMlRadius(zipCode string, radius float64) ([]string, error) {
-	zipcodeList := []string{}
-	location, errLoc := zc.Lookup(zipCode)
-	if errLoc != nil {
-		return zipcodeList, errLoc
-	}
-
-	return zc.FindZipcodesWithinRadius(location, radius, earthRadiusMi), nil
+func (zc Zipcodes) GetZipcodesWithinMlRadius(zipcodeLocation ZipCodeLocation, radius float64) []string {
+	return zc.FindZipcodesWithinRadius(zipcodeLocation, radius, earthRadiusMi)
 }
 
 // FindZipcodesWithinRadius finds zipcodes within a given radius
-func (zc *Zipcodes) FindZipcodesWithinRadius(location *ZipCodeLocation, maxRadius float64, earthRadius float64) []string {
+func (zc Zipcodes) FindZipcodesWithinRadius(zipcodeLocation ZipCodeLocation, maxRadius, earthRadius float64) []string {
 	zipcodeList := []string{}
 	for _, elm := range zc.DatasetList {
-		if elm.ZipCode != location.ZipCode {
-			distance := DistanceBetweenPoints(location.Lat, location.Lon, elm.Lat, elm.Lon, earthRadius)
-			if distance < maxRadius {
-				zipcodeList = append(zipcodeList, elm.ZipCode)
+		for _, zcls := range elm {
+			if zcls.ZipCode != zipcodeLocation.ZipCode {
+				distance := DistanceBetweenPoints(zipcodeLocation.Lat, zipcodeLocation.Lon, zcls.Lat, zcls.Lon, earthRadius)
+				if distance < maxRadius {
+					zipcodeList = append(zipcodeList, zcls.ZipCode)
+				}
 			}
 		}
 	}
@@ -134,18 +116,9 @@ func (zc *Zipcodes) FindZipcodesWithinRadius(location *ZipCodeLocation, maxRadiu
 	return zipcodeList
 }
 
-func hsin(t float64) float64 {
-	return math.Pow(math.Sin(t/2), 2)
-}
-
-// degreesToRadians converts degrees to radians
-func degreesToRadians(d float64) float64 {
-	return d * math.Pi / 180
-}
-
 // DistanceBetweenPoints returns the distance between two lat/lon
-// points using the Haversin distance formula.
-func DistanceBetweenPoints(latitude1, longitude1, latitude2, longitude2 float64, radius float64) float64 {
+// points using the Haversine distance formula.
+func DistanceBetweenPoints(latitude1, longitude1, latitude2, longitude2, radius float64) float64 {
 	lat1 := degreesToRadians(latitude1)
 	lon1 := degreesToRadians(longitude1)
 	lat2 := degreesToRadians(latitude2)
@@ -170,6 +143,25 @@ func LoadDatasetByCountry(datasetPath, country string) (Zipcodes, error) {
 	return loadDataset(datasetPath, country)
 }
 
+// IsMulti returns if there are multiple lat/lon coordinates for a zipcode
+func IsMulti(zipcodeLocations ZipCodeLocations) bool {
+	if len(zipcodeLocations) == 1 {
+		return false
+	}
+
+	return true
+}
+
+// degreesToRadians converts degrees to radians
+func degreesToRadians(d float64) float64 {
+	return d * math.Pi / 180
+}
+
+func hsin(t float64) float64 {
+	return math.Pow(math.Sin(t/2), 2)
+}
+
+// loadDataset is a consilidated function handling LoadDataset() and LoadDatasetByCountry()
 func loadDataset(datasetPath, country string) (Zipcodes, error) {
 	wantCountry := country != ""
 	inCountry := false
@@ -188,7 +180,7 @@ func loadDataset(datasetPath, country string) (Zipcodes, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	zipcodeMap := Zipcodes{DatasetList: make(map[string]ZipCodeLocation)}
+	zipcodeMap := Zipcodes{DatasetList: make(map[string]ZipCodeLocations)}
 	for scanner.Scan() {
 		splittedLine := strings.Split(scanner.Text(), "\t")
 		if len(splittedLine) != 12 {
@@ -202,19 +194,21 @@ func loadDataset(datasetPath, country string) (Zipcodes, error) {
 			if errLat != nil {
 				return Zipcodes{}, fmt.Errorf("zipcodes: error while converting %s to Latitude", splittedLine[9])
 			}
+
 			lon, errLon := strconv.ParseFloat(splittedLine[10], 64)
 			if errLon != nil {
 				return Zipcodes{}, fmt.Errorf("zipcodes: error while converting %s to Longitude", splittedLine[10])
 			}
 
-			zipcodeMap.DatasetList[splittedLine[1]] = ZipCodeLocation{
-				ZipCode:   splittedLine[1],
-				PlaceName: splittedLine[2],
-				AdminName: splittedLine[3],
-				Lat:       lat,
-				Lon:       lon,
-				StateCode: splittedLine[4],
-			}
+			zipcodeMap.DatasetList[splittedLine[1]] =
+				append(zipcodeMap.DatasetList[splittedLine[1]], ZipCodeLocation{
+					ZipCode:   splittedLine[1],
+					PlaceName: splittedLine[2],
+					AdminName: splittedLine[3],
+					Lat:       lat,
+					Lon:       lon,
+					StateCode: splittedLine[4],
+				})
 		} else if inCountry && splittedLine[0] != country {
 			break
 		}
@@ -223,5 +217,6 @@ func loadDataset(datasetPath, country string) (Zipcodes, error) {
 	if err := scanner.Err(); err != nil {
 		return Zipcodes{}, fmt.Errorf("zipcodes: error while opening file %v", err)
 	}
+
 	return zipcodeMap, nil
 }

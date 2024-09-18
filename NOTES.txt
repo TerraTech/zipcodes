@@ -1,0 +1,11 @@
+In the US dataset, there are duplicates for two zipcodes:
+1) 96860
+2) 96863
+
+$ grep 96860 US.lst
+US      96860   Jbphh   Hawaii  HI      Honolulu        003                     21.316  -157.8677       1
+US      96860   FPO AA                                                  21.3448 -157.9774       4
+
+$ grep 96863 US.lst
+US      96863   Mcbh Kaneohe Bay        Hawaii  HI      Honolulu        003                     21.316  -157.8677       1
+US      96863   FPO AA                                                  21.4505 -157.768        4
