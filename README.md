@@ -1,3 +1,5 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/TerraTech/zipcodes.svg)](https://pkg.go.dev/github.com/TerraTech/zipcodes)
+
 # zipcodes - Zip Code Lookups
 
 A Zipcode lookup package that uses the GeoNames Postal Code dataset from http://www.geonames.org .
@@ -7,7 +9,7 @@ You can initialize it with a Postal Code dataset downloaded from http://download
 
 Install with
 ```sh
-go get github.com/fegoa89/zipcodes
+go get github.com/TerraTech/zipcodes
 ```
 
 ### Initialize Struct
@@ -18,6 +20,22 @@ Initializes a zipcodes struct. It will throw an error if:
 
 ```golang
 zipcodesDataset, err := zipcodes.New("path/to/my/dataset.txt")
+
+-OR-
+
+zipcodesDataset, err := zipcodes.LoadDataset("path/to/my/dataset.txt")
+
+```
+
+### Initialize Struct by specific ISO Country Code
+Initializes a zipcodes struct. It will throw an error if:
+- The file does not exist / wrong format.
+- Some of the lines contain less that 12 elements (in the readme.txt of each postal code dataset, they define up to 12 elements).
+- Where latitude / longitude value are contains a wrong format (string that can not be converted to `float64`).
+
+```golang
+zipcodesDataset, err := zipcodes.LoadDatasetByCountry("path/to/my/dataset.txt", "US")
+
 ```
 
 ### Lookup
