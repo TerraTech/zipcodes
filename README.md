@@ -1,4 +1,4 @@
-[![Go Reference](https://pkg.go.dev/badge/github.com/TerraTech/zipcodes.svg)](https://pkg.go.dev/github.com/TerraTech/zipcodes)
+[![Go Reference](https://pkg.go.dev/badge/github.com/TerraTech/zipcodes.svg)](https://pkg.go.dev/github.com/TerraTech/zipcodes/v2)
 
 # zipcodes - Zip Code Lookups
 
@@ -9,7 +9,7 @@ You can initialize it with a Postal Code dataset downloaded from http://download
 
 Install with
 ```sh
-go get github.com/TerraTech/zipcodes
+go get github.com/TerraTech/zipcodes/v2
 ```
 
 ### Initialize Struct
@@ -50,40 +50,56 @@ location, err := zipcodesDataset.Lookup("10395")
 Returns the line of sight distance between two zipcodes in kilometers:
 
 ```golang
-location, err := zipcodesDataset.DistanceInKm("01945", "03058") // 49.87
+zlA, err := zipcodesDataset.Lookup("01945")
+...
+zlB, err := zipcodesDataset.Lookup("03058")
+...
+distance := zipcodesDataset.DistanceInKm(zlA, zlB) // 49.87
 ```
 
 ### DistanceInMiles
 Returns the line of sight distance between two zipcodes in miles:
 
 ```golang
-location, err := zipcodesDataset.DistanceInMiles("01945", "03058") // 30.98
+zlA, err := zipcodesDataset.Lookup("01945")
+...
+zlB, err := zipcodesDataset.Lookup("03058")
+...
+distance := zipcodesDataset.DistanceInMiles(zlA, zlB) // 30.98
 ```
 
 ### DistanceInKmToZipCode
 Calculates the distance between a zipcode and a give lat/lon in Kilometers:
 
 ```golang
-location, err := zipcodesDataset.DistanceInKmToZipCode("01945", 51.4267, 13.9333) // 1.11
+zl, err := zipcodesDataset.Lookup("01945")
+...
+distance := zipcodesDataset.DistanceInKmToZipCode(zl, 51.4267, 13.9333) // 1.11
 ```
 
 ### DistanceInMilToZipCode
 Calculates the distance between a zipcode and a give lat/lon in Miles:
 
 ```golang
-location, err := zipcodesDataset.DistanceInMilToZipCode("01945", 51.4267, 13.9333) // 0.69
+zl, err := zipcodesDataset.Lookup("01945")
+...
+distance := zipcodesDataset.DistanceInMilToZipCode(zl, 51.4267, 13.9333) // 0.69
 ```
 
 ### GetZipcodesWithinKmRadius
 Returns a list of zipcodes within the radius of this zipcode in Kilometers:
 
 ```golang
-location, err := zipcodesDataset.GetZipcodesWithinKmRadius("01945", 50) // ["03058"]
+zl, err := zipcodesDataset.Lookup("01945")
+...
+zipcodes := zipcodesDataset.GetZipcodesWithinKmRadius(zl, 50) // ["03058"]
 ```
 
 ### GetZipcodesWithinMlRadius
 Returns a list of zipcodes within the radius of this zipcode in Miles:
 
 ```golang
-location, err := zipcodesDataset.GetZipcodesWithinMlRadius("01945", 50) // ["03058"]
+zl, err := zipcodesDataset.Lookup("01945")
+...
+zipcodes := zipcodesDataset.GetZipcodesWithinMlRadius(zl, 50) // ["03058"]
 ```
