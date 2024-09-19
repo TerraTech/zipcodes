@@ -116,6 +116,11 @@ func (zc Zipcodes) FindZipcodesWithinRadius(zipcodeLocation ZipCodeLocation, max
 	return zipcodeList
 }
 
+// IsMulti returns if there are multiple lat/lon coordinates for a zipcode
+func (zcl ZipCodeLocations) IsMulti() bool {
+	return len(zcl) > 1
+}
+
 // DistanceBetweenPoints returns the distance between two lat/lon
 // points using the Haversine distance formula.
 func DistanceBetweenPoints(latitude1, longitude1, latitude2, longitude2, radius float64) float64 {
@@ -145,11 +150,7 @@ func LoadDatasetByCountry(datasetPath, country string) (Zipcodes, error) {
 
 // IsMulti returns if there are multiple lat/lon coordinates for a zipcode
 func IsMulti(zipcodeLocations ZipCodeLocations) bool {
-	if len(zipcodeLocations) == 1 {
-		return false
-	}
-
-	return true
+	return zipcodeLocations.IsMulti()
 }
 
 // degreesToRadians converts degrees to radians
